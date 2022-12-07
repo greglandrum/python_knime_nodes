@@ -5,4 +5,4 @@ import new_rdkit_nodes.molecule_standardizer
 #import new_rdkit_nodes.visualize_logp_contributions
 #import new_rdkit_nodes.visualize_morganfp_bits
 #import new_rdkit_nodes.visualize_rdkitfp_bits
-import new_rdkit_nodes.RDKitObject
+#import new_rdkit_nodes.RDKitObject

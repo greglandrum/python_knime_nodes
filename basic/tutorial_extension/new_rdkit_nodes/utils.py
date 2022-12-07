@@ -2,6 +2,11 @@ import knime_extension as knext
 from rdkit import Chem
 import knime.types.chemistry as cet # To work with and compare against chemical data types like SMILES,...
 
+category = knext.category('/community/rdkit', 'python_nodes', 'New RDKit Nodes', 
+        'RDKit nodes which are written in Python (still exploratory)', 
+        icon='category_rdkit.png')
+
+
 ctabTypes = (knext.logical(cet.SdfValue),
     knext.logical(cet.SdfAdapterValue),
     )
@@ -9,7 +14,6 @@ smilesTypes = (knext.logical(cet.SmilesValue),
     knext.logical(cet.SmilesAdapterValue),)
 rdkitTypes = (knext.logical(Chem.rdchem.Mol),)
 
-category = knext.category('/', 'new_rdkit_nodes', 'New RDKit Nodes', 'foo', icon='icon.png')
 
 
 def column_is_convertible_to_mol(column: knext.Column):

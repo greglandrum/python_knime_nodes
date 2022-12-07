@@ -47,6 +47,7 @@ Part of the RDKit Python extension. Node 'Get Parent Molecule (RDKit)'.
 
 @author Dora Barna, KNIME GmbH, Konstanz, Germany
 @author Steffen Fissler, KNIME GmbH, Konstanz, Germany
+@author Greg Landrum, ETH Zurich, Switzerland
 """
 
 import logging
@@ -71,9 +72,6 @@ from rdkit.Chem import rdDepictor
 rdDepictor.SetPreferCoordGen(True)
 
 LOGGER = logging.getLogger(__name__)
-
-
-
 
 @knext.node(
     name="Get Parent Molecule (RDKit)",
