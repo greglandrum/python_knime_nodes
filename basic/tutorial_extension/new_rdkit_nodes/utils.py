@@ -27,19 +27,21 @@ def column_is_convertible_to_mol(column: knext.Column):
     return c_type in allowedTypes
 
 
-def convert_column_to_rdkit_mol(df, molecule_column_type,
-                                molecule_column_param):
+def convert_column_to_rdkit_mol(df,
+                                molecule_column_type,
+                                molecule_column_param,
+                                sanitizeOnParse=True):
     if molecule_column_type in rdkitTypes:
         LOGGER.warning("rdkit mols detected")
         mols = df[molecule_column_param]
     elif molecule_column_type in smilesTypes:
         mols = [
-            Chem.MolFromSmiles(smi, sanitize=False)
+            Chem.MolFromSmiles(smi, sanitize=sanitizeOnParse)
             for smi in df[molecule_column_param]
         ]
     elif molecule_column_type in ctabTypes:
         mols = [
-            Chem.MolFromMolBlock(mb, sanitize=False, removeHs=False)
+            Chem.MolFromMolBlock(mb, sanitize=sanitizeOnParse, removeHs=sanitizeOnParse)
             for mb in df[molecule_column_param]
         ]
     else:

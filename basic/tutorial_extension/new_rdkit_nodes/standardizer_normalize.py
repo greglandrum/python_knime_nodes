@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------
-#  Copyright by KNIME AG, Zurich, Switzerland
-#  Website: http://www.knime.com; Email: contact@knime.com
+#  Copyright by Greg Landrum
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License, Version 3, as
@@ -42,10 +41,8 @@
 #  when such Node is propagated with or for interoperation with KNIME.
 # ------------------------------------------------------------------------
 """
-Part of the RDKit Python extension. Node 'Get Parent Molecule'.
+Part of the RDKit Python extension. Node 'Normalize Molecule'.
 
-@author Dora Barna, KNIME GmbH, Konstanz, Germany
-@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 @author Greg Landrum, ETH Zurich, Switzerland
 """
 
@@ -67,54 +64,54 @@ RDLogger.DisableLog("rdApp.info")
 
 
 @knext.node(
-    name="Get Parent Molecule",
+    name="Normalize Molecule",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icon.png",
     category=utils.category,
 )
 @knext.input_table(name="Input Data", description="Input data with molecules")
 @knext.output_table(name="Output Data",
-                    description="Input data with parent molecules")
-class GetParentMoleculeNode(knext.PythonNode):
-    """Returns standardized parent structure of a molecule.
+                    description="Input data with normalized molecules")
+class GetNormalizedMoleculeNode(knext.PythonNode):
+    """Returns normalized structure of a molecule.
 
-    This node returns the standardized parent structure of an input molecule.
+    This node returns the normalized structure of an input molecule.
     """
 
-    action_description = """Standardization action to generate the parent structure:\n
-    Largest fragment: Returns the largest fragment after doing a cleanup\n
-    Remove charge: Returns the uncharged version of the largest fragment\n
-    Canonical tautomer: Returns the tautomer parent of a given molecule. The fragment parent is the standardized canonical tautomer of the molecule\n
-    Remove isotopes: Removes all isotopes specifications from the given molecule\n
-    Remove stereo: Removes the stereo specifications from the given molecule\n
-    Super parent: Returns the super parent. The super parent is the fragment, charge, isotope, stereo, and tautomer parent of the molecule."""
-    standardization_actions = {
-        "Largest fragment": rdMolStandardize.FragmentParent,
-        "Remove charge": rdMolStandardize.ChargeParent,
-        "Canonical tautomer": rdMolStandardize.TautomerParent,
-        "Remove isotope": rdMolStandardize.IsotopeParent,
-        "Remove stereo": rdMolStandardize.StereoParent,
-        "Super parent": rdMolStandardize.SuperParent
-    }
+    # action_description = """Standardization action to generate the parent structure:\n
+    # Largest fragment: Returns the largest fragment after doing a cleanup\n
+    # Remove charge: Returns the uncharged version of the largest fragment\n
+    # Canonical tautomer: Returns the tautomer parent of a given molecule. The fragment parent is the standardized canonical tautomer of the molecule\n
+    # Remove isotopes: Removes all isotopes specifications from the given molecule\n
+    # Remove stereo: Removes the stereo specifications from the given molecule\n
+    # Super parent: Returns the super parent. The super parent is the fragment, charge, isotope, stereo, and tautomer parent of the molecule."""
+    # standardization_actions = {
+    #     "Largest fragment": rdMolStandardize.FragmentParent,
+    #     "Remove charge": rdMolStandardize.ChargeParent,
+    #     "Canonical tautomer": rdMolStandardize.TautomerParent,
+    #     "Remove isotope": rdMolStandardize.IsotopeParent,
+    #     "Remove stereo": rdMolStandardize.StereoParent,
+    #     "Super parent": rdMolStandardize.SuperParent
+    # }
 
-    stand_action_list = list(standardization_actions.keys())
+    # stand_action_list = list(standardization_actions.keys())
 
     molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
         description=
-        "Select the molecule column to standardize. The column has to be SMILES, SDF, or RDKit molecule.",
+        "Select the molecule column to normalize. The column has to be SMILES, SDF, or RDKit molecule.",
         port_index=0,
         column_filter=utils.column_is_convertible_to_mol,
         include_row_key=False,
         include_none_column=False,
     )
 
-    stand_action_param = knext.StringParameter(
-        label="Standardization action",
-        description=action_description,
-        default_value="Super parent",
-        enum=stand_action_list,
-    )
+    # stand_action_param = knext.StringParameter(
+    #     label="Standardization action",
+    #     description=action_description,
+    #     default_value="Super parent",
+    #     enum=stand_action_list,
+    # )
 
     def configure(self, configure_context, input_schema_1: knext.Schema):
         return input_schema_1.append(
@@ -138,10 +135,10 @@ class GetParentMoleculeNode(knext.PythonNode):
         progress = 0.0
         add_to_progress = 1 / input_1.num_rows
         pmols = []
+        normalizer = rdMolStandardize.Normalizer()
         for mol in mols:
-            parent = self.standardization_actions[self.stand_action_param](
-                mol, skipStandardize=True)
-            pmols.append(parent)
+            mol = normalizer.normalize(mol)
+            pmols.append(mol)
             progress += add_to_progress
             exec_context.set_progress(progress=progress)
 
