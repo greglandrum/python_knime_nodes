@@ -67,7 +67,7 @@ RDLogger.DisableLog("rdApp.info")
 
 
 @knext.node(
-    name="Get Parent Molecule (RDKit)",
+    name="Get Parent Molecule",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icon.png",
     category=utils.category,
