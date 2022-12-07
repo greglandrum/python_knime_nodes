@@ -60,17 +60,10 @@ from new_rdkit_nodes import utils
 
 from rdkit.Chem.MolStandardize import rdMolStandardize
 
-# disable info log
+# The standardization code is very verbose, so disable the info log
 from rdkit import RDLogger
 
 RDLogger.DisableLog("rdApp.info")
-
-# using Schroedinger's open source cooord gen
-from rdkit.Chem import rdDepictor
-
-rdDepictor.SetPreferCoordGen(True)
-
-LOGGER = logging.getLogger(__name__)
 
 
 @knext.node(
@@ -79,9 +72,9 @@ LOGGER = logging.getLogger(__name__)
     icon_path="icon.png",
     category=utils.category,
 )
-@knext.input_table(name="Input Data", description="Input molecule in SMILES")
+@knext.input_table(name="Input Data", description="Input data with molecules")
 @knext.output_table(name="Output Data",
-                    description="Parent molecule in SMILES")
+                    description="Input data with parent molecules")
 class GetParentMoleculeNode(knext.PythonNode):
     """Returns standardized parent structure of a molecule.
 
@@ -95,15 +88,16 @@ class GetParentMoleculeNode(knext.PythonNode):
     Remove isotopes: Removes all isotopes specifications from the given molecule\n
     Remove stereo: Removes the stereo specifications from the given molecule\n
     Super parent: Returns the super parent. The super parent is the fragment, charge, isotope, stereo, and tautomer parent of the molecule."""
+    standardization_actions = {
+        "Largest fragment": rdMolStandardize.FragmentParent,
+        "Remove charge": rdMolStandardize.ChargeParent,
+        "Canonical tautomer": rdMolStandardize.TautomerParent,
+        "Remove isotope": rdMolStandardize.IsotopeParent,
+        "Remove stereo": rdMolStandardize.StereoParent,
+        "Super parent": rdMolStandardize.SuperParent
+    }
 
-    stand_action_list = [
-        "Largest fragment",
-        "Remove charge",
-        "Canonical tautomer",
-        "Remove isotopes",
-        "Remove stereo",
-        "Super parent",
-    ]
+    stand_action_list = list(standardization_actions.keys())
 
     molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
@@ -123,12 +117,8 @@ class GetParentMoleculeNode(knext.PythonNode):
     )
 
     def configure(self, configure_context, input_schema_1: knext.Schema):
-        # return None
         return input_schema_1.append(
-            knext.Column(ktype=cet.SmilesValue,
-                         name="Parent Molecule (SMILES)")).append(
-                             knext.Column(ktype=Chem.Mol,
-                                          name="Parent Molecule"))
+            knext.Column(ktype=Chem.Mol, name="Parent Molecule"))
 
     def execute(self, exec_context: knext.ExecutionContext,
                 input_1: knext.Table):
@@ -149,30 +139,13 @@ class GetParentMoleculeNode(knext.PythonNode):
         parents = []
         pmols = []
         for mol in mols:
-            if self.stand_action_param == "Largest fragment":
-                parent = Chem.MolToSmiles(
-                    rdMolStandardize.FragmentParent(mol, skipStandardize=True))
-            elif self.stand_action_param == "Remove charge":
-                parent = Chem.MolToSmiles(
-                    rdMolStandardize.ChargeParent(mol, skipStandardize=True))
-            elif self.stand_action_param == "Canonical tautomer":
-                parent = Chem.MolToSmiles(
-                    rdMolStandardize.TautomerParent(mol, skipStandardize=True))
-            elif self.stand_action_param == "Remove istopes":
-                parent = Chem.MolToSmiles(rdMolStandardize.IsotopeParent(mol))
-            elif self.stand_action_param == "Remove stereo":
-                parent = Chem.MolToSmiles(rdMolStandardize.StereoParent(mol))
-            elif self.stand_action_param == "Super parent":
-                parent = Chem.MolToSmiles(rdMolStandardize.SuperParent(mol))
-            else:
-                print("Invalid input")
-            parents.append(cet.SmilesValue(parent))
-            pmols.append(Chem.MolFromSmiles(parent))
+            parent = self.standardization_actions[self.stand_action_param](
+                mol, skipStandardize=True)
+            pmols.append(parent)
             progress += add_to_progress
             exec_context.set_progress(progress=progress)
 
         # Add the parent molecule to the pandas dataframe as a new column
-        df["Parent Molecule (SMILES)"] = parents
         df["Parent Molecule"] = pmols
         # Convert the processed table back from a pandas DataFrame to a KNIME table
         return knext.Table.from_pandas(df)
