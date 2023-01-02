@@ -44,21 +44,20 @@
 
 """
 Part of the RDKit Python extension. Node 'Visualize RDKit fingerprint bits'.
-
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
-@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
+@author Greg Landrum, ETH Zurich, Switzerland
 """
 
 import logging
 from turtle import clear
 import knime_extension as knext
-from rdkit import Chem
+import knime.types.chemistry as cet
+from new_rdkit_nodes import utils
 from new_rdkit_nodes.utils import category
-# from rdkit.Chem import rdMolDescriptors
+from rdkit import Chem
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import Draw
 
-# from rdkit.Chem import PandasTools
 LOGGER = logging.getLogger(__name__)
 IPythonConsole.UninstallIPythonRenderer()
 
@@ -67,72 +66,113 @@ IPythonConsole.UninstallIPythonRenderer()
     name="Visualize bits of RDKit fingerprints",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icon.png",
-    category=category)
-@knext.input_table(name="Input table 1", description="Input table 1 with molecules")
-@knext.input_table(name="Input table 2", description="Input table 2 with RDKit fingerprint bits")
+    category=category
+    )
+@knext.input_table(
+    name="Input table 1", 
+    description="Input table 1 containing molecules"
+    )
+@knext.input_table(
+    name="Input table 2", 
+    description="Input table 2 containing a list of RDKit fingerprint bits"
+    )
 @knext.output_table(
     name="Highlighted bits",
-    description="Output tables including images of the highlighted bits",
+    description="Output table including images of the highlighted bits"
 )
+
 class visualizerdkitfpbits:
     """
-    This node has a description, and I will change it once I figured out the code...
-    """
+    This node takes molecules as input, converts them to RDKit mol if not given already, calculates the RDKit fingerprint
+    and gets the bit info. To calculate the fingerprint, the user specifies the minimum and maximun path length. Once the 
+    fingerprint bits and according bit info is calculated, it is checked if the bit is contained in the user-provided bit 
+    list. If so, a svg is returned, if not a missing value. The same number of columns is appended to the input table with
+    the molecules (port 1), as there are items in the bit list (port 2).
 
+    """
+# define config window
+    # get user input on fingerprint size aka number of bits, minimum and maximum path length. 
     fp_size = knext.IntParameter(
         "size of fingerprint",
         "Define the fingerprint size aka number of bits",
         2048,
-        min_value=0,
-    )
-    # min_path = knext.IntParameter("minimum path length", "Define the path length", 2, min_value=0)
+        min_value=0
+        )
+
+    min_path = knext.IntParameter(
+        "minimum path length", 
+        "Define the path length", 
+        2, 
+        min_value=0
+        )
+        
     max_path = knext.IntParameter(
-        "maximum path length", "Define the path length", 2, min_value=0
-    )
+        "maximum path length", 
+        "Define the path length", 
+        7, 
+        min_value=0
+        )
 
-    # def is_molecule(column):  # Filter columns visible in the column_param for chemistry type; column_filter=is_molecule
-    #     return (
-    #         column.ktype == knext.smiles()
-    #         or column.ktype == knext.smarts()
-    #         or column.ktype == knext.sdf()
-    #     )
-
-    molecule_column = knext.ColumnParameter(
+    # select molecule column from input port 0 and the bit column from port 1
+    molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
-        description="Choose the column from the first input table containing the molecules",
+        description=
+        "Select the molecule column. The column has to be SMILES, SDF, or RDKit molecule.",
         port_index=0,
+        # column_filter=utils.column_is_convertible_to_mol,
+        include_row_key=False,
+        include_none_column=False,
     )
+
     bits_column = knext.ColumnParameter(
         label="Bits column",
         description="Choose the column from the second input table containing the bits as integer",
         port_index=1,
+        # column_filter=utils.column_is_integer,
+        include_row_key=False,
+        include_none_column=False
     )
 
-    a = 0  # the number of columns we want to add
+    a = 0  
 
+# define the schema of the node output table
     def configure(
-        self, configure_context, input_schema_1: knext.Schema, input_schema_2
-    ):  # STEFFEN NERVEN wie man a setzt!!!
+        self, configure_context, input_schema_1: knext.Schema, input_schema_2: knext.Schema
+    ): 
         for i in range(self.a):
-            input_schema_1 = input_schema_1.append(knext.Column(knext.string()), "test")
-            # input_schema_1 = input_schema_1.append(knext.Column(knext.string(), f"column{self.a}"))
+            input_schema_1 = input_schema_1.append(knext.Column(knext.string()), "test")            
         return input_schema_1
 
+
+# actual function
+    # def execute(self, exec_context, input_1, input_2):
+    #     return input_1
+
     def execute(self, exec_context, input_1, input_2):
+        if self.molecule_column_param is None:
+            raise AttributeError(
+                "Molecule column was not selected in configuration dialog.")
+
+        if self.bits_column is None:
+            raise AttributeError(
+                "Bits column was not selected in configuration dialog.")
+        
+        
         a = len(self.bits_column)
 
+        # make Pandas dataframes
         input_1_pandas = input_1.to_pandas()
         input_2_pandas = input_2.to_pandas()
+        output_table_1 = input_1_pandas.copy()
 
-        # define the molecules from input table 1
-        # mols = [Chem.MolFromSmiles(smi) for smi in input_1_pandas[self.molecule_column]]
-
-        mols = []
-        for smi in input_1_pandas[self.molecule_column]:
-            mols.append(Chem.MolFromSmiles(smi))
-
-        # LOGGER.warning(mols)
-        # LOGGER.warning(type(mols))
+        # Prepare mols: If input column consists of rdkit molecules, use them;
+        # if input column consists of SMILES, convert to rdkit molecules
+        molecule_column_type = input_1.schema[self.molecule_column_param].ktype
+        df = input_1.to_pandas()
+        mols = utils.convert_column_to_rdkit_mol(df,
+                                                 molecule_column_type,
+                                                 self.molecule_column_param,
+                                                 sanitizeOnParse=False)
 
         # create list of FP bits from input table 2
         fp_ids = input_2_pandas[self.bits_column]
@@ -140,14 +180,11 @@ class visualizerdkitfpbits:
         cols = [None] * len(fp_ids)
         for i in range(len(cols)):
             cols[i] = []
-
-        # defining the output table
-        output_table_1 = input_1_pandas.copy()
-
+        
         for mol in mols:
-            rdkbi = {}  # defining a dictionary
+            rdkbi = {}  
             fp = Chem.RDKFingerprint(
-                mol, maxPath=self.max_path, fpSize=self.fp_size, bitInfo=rdkbi
+                mol, minPath=self.min_path, maxPath=self.max_path, fpSize=self.fp_size, bitInfo=rdkbi
             )  # calculate fingerprint with user-defined path length and nr of bits aka fp size
             Chem.Kekulize(mol)  # kekulize molecules
             for i, idx in enumerate(
@@ -160,8 +197,9 @@ class visualizerdkitfpbits:
                         cols[i].append(None)
                 else:
                     cols[i].append(None)
-
+        
         for i, idx in enumerate(fp_ids):
             output_table_1[f"bit{idx}"] = cols[i]
 
+        # return knext.Table.from_pandas(input_1_pandas)
         return knext.Table.from_pandas(output_table_1)

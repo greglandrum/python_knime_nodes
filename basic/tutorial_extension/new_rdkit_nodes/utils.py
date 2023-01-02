@@ -1,6 +1,8 @@
+import logging
 import knime_extension as knext
 from rdkit import Chem
-import knime.types.chemistry as cet  # To work with and compare against chemical data types like SMILES,...
+import knime.types.chemistry as cet
+LOGGER = logging.getLogger(__name__)
 
 category = knext.category(
     '/community/rdkit',
@@ -23,14 +25,16 @@ rdkitTypes = (knext.logical(Chem.rdchem.Mol), )
 def column_is_convertible_to_mol(column: knext.Column):
     c_type = column.ktype
     allowedTypes = smilesTypes + ctabTypes + rdkitTypes
-
     return c_type in allowedTypes
 
+def column_is_integer(column: knext.Column):
+    return (column.ktype == knext.int32() or column.ktype == knext.int64())
 
 def convert_column_to_rdkit_mol(df,
                                 molecule_column_type,
                                 molecule_column_param,
                                 sanitizeOnParse=True):
+    # return
     if molecule_column_type in rdkitTypes:
         LOGGER.warning("rdkit mols detected")
         mols = df[molecule_column_param]
