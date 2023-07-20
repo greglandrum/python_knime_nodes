@@ -1,4 +1,4 @@
-name: first_extension # Will be concatenated with the group_id to an ID
+name: rdkit_python_nodes # Will be concatenated with the group_id to an ID
 author: Alice
 env_yml_path: <PUT SOMETHING HERE> # This is necessary for bundling, but not needed during development
 extension_module: new_rdkit_nodes # The .py Python module containing the nodes of your extension

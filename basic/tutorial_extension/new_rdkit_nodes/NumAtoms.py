@@ -1,5 +1,5 @@
 import logging
-import knime_extension as knext
+import knime.extension as knext
 from rdkit import Chem
 import pandas as pd
 import numpy as np

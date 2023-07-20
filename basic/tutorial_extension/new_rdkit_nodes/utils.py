@@ -1,6 +1,8 @@
-import knime_extension as knext
+import knime.extension as knext
 from rdkit import Chem
 import knime.types.chemistry as cet  # To work with and compare against chemical data types like SMILES,...
+import logging
+LOGGER = logging.getLogger(__name__)
 
 category = knext.category(
     '/community/rdkit',
@@ -12,6 +14,7 @@ category = knext.category(
 ctabTypes = (
     knext.logical(cet.SdfValue),
     knext.logical(cet.SdfAdapterValue),
+    knext.logical(cet.MolAdapterValue),
 )
 smilesTypes = (
     knext.logical(cet.SmilesValue),
