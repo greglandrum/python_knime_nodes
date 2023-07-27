@@ -41,7 +41,6 @@
 #  may freely choose the license terms applicable to such Node, including
 #  when such Node is propagated with or for interoperation with KNIME.
 # ------------------------------------------------------------------------
-
 """
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
 
@@ -50,23 +49,28 @@ Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
 """
 
 import logging
-from turtle import clear
 import knime_extension as knext
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import Draw
-from new_rdkit_nodes.utils import category
+from new_rdkit_nodes import utils
+
+from PIL import Image
+from io import BytesIO
 
 LOGGER = logging.getLogger(__name__)
 IPythonConsole.UninstallIPythonRenderer()
 
-#import chem_extension_types as cet  # To work with and compare against chemical data types like SMILES,...
 
-
-@knext.node(name="Visualize bits of Morgan fingerprints", node_type=knext.NodeType.MANIPULATOR, icon_path="icon.png", category=category)
-@knext.input_table(name="Input table 1", description="Input table 1 with molecules")
-@knext.input_table(name="Input table 2", description="Input table 2 with Morgan fingerprint bits")
+@knext.node(name="Visualize Morgan fingerprint bits",
+            node_type=knext.NodeType.MANIPULATOR,
+            icon_path="icon.png",
+            category=utils.category)
+@knext.input_table(name="Input table 1",
+                   description="Input table 1 with molecules")
+@knext.input_table(name="Input table 2",
+                   description="Input table 2 with Morgan fingerprint bits")
 @knext.output_table(
     name="Highlighted bits",
     description="Output tables including images of the highlighted bits",
@@ -76,54 +80,57 @@ class visualizemorganfpbits(knext.PythonNode):
     This node has a description, and I will change it once I figured out the code...
     """
 
-    def column_is_smiles_or_mol(column: knext.Column):
-        c_type = column.ktype
-        smiles_type = knext.logical(cet.SmilesValue)
-        smiles_adapter_type = knext.logical(cet.SmilesAdapterValue)
-        rdkit_mol_type = knext.logical(Chem.rdchem.Mol)
-        return (
-            c_type == smiles_type
-            or c_type == smiles_adapter_type
-            or c_type == rdkit_mol_type
-        )
+    number_bits = knext.IntParameter("Number of bits",
+                                     "Define the number of bits",
+                                     1024,
+                                     min_value=0)
+    radius = knext.IntParameter("FP radius",
+                                "Define the number of the FP radius",
+                                2,
+                                min_value=0)
 
-    number_bits = knext.IntParameter(
-        "Number of bits", "Define the number of bits", 1024, min_value=0
-    )
-    radius = knext.IntParameter(
-        "FP radius", "Define the number of the FP radius", 2, min_value=0
-    )
-
-    molecule_column = knext.ColumnParameter(
+    molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
-        description="Choose the column from the first input table containing the molecules",
+        description=
+        "Choose the column from the first input table containing the molecules",
         port_index=0,
-        column_filter=column_is_smiles_or_mol,
+        column_filter=utils.column_is_convertible_to_mol,
+        include_row_key=False,
+        include_none_column=False,
     )
-    bits_column = knext.ColumnParameter(
+    bits_column_param = knext.ColumnParameter(
         label="Bits column",
-        description="Choose the column from the second input table containing the bits as integer",
+        description=
+        "Choose the column from the second input table containing the bits as integer",
         port_index=1,
-        column_filter=lambda column: column.ktype == knext.int64
-        or column.ktype == knext.int32f,
+        column_filter=lambda column: column.ktype in
+        (knext.int64(), knext.int32()),
+        include_row_key=False,
+        include_none_column=False,
     )
 
-    def configure(
-        self, configure_context, input_schema_1: knext.Schema, input_schema_2
-    ):
+    def configure(self, configure_context, input_schema_1: knext.Schema,
+                  input_schema_2):
         return input_schema_1
 
-    def execute(self, exec_context, input_1: knext.Table, input_2: knext.Table):
-        if self.molecule_column is None or self.bits_column is None:
+    def execute(self, exec_context: knext.ExecutionContext,
+                input_1: knext.Table, input_2: knext.Table):
+        if self.molecule_column_param is None or self.bits_column_param is None:
             raise AttributeError(
                 "Molecule or Bits column was not selected in configuration dialog."
             )
 
         df = input_1.to_pandas()
-        mols = self.get_mols(input_1, df)
+
+        molecule_column_type = input_1.schema[self.molecule_column_param].ktype
+        df = input_1.to_pandas()
+        mols = utils.convert_column_to_rdkit_mol(df,
+                                                 molecule_column_type,
+                                                 self.molecule_column_param,
+                                                 sanitizeOnParse=True)
 
         # create list of FP bits from input table 2
-        fp_ids = input_2.to_pandas()[self.bits_column]
+        fp_ids = input_2.to_pandas()[self.bits_column_param]
 
         cols = [None] * len(fp_ids)
         for i in range(len(cols)):
@@ -136,12 +143,17 @@ class visualizemorganfpbits(knext.PythonNode):
             )  # calculate fingerprint with user-defined radius and nr of bits
             Chem.Kekulize(mol)  # kekulize molecules
             for i, idx in enumerate(
-                fp_ids
+                    fp_ids
             ):  # if rendering fails, append an empty cell. Don't make if-else to catch the error
                 if fp[idx]:
                     try:
-                        cols[i].append(Draw.DrawMorganBit(mol, idx, bi, useSVG=True))
+                        img = Draw.DrawMorganBit(mol, idx, bi, useSVG=False)
+                        sio = BytesIO(img)
+                        img = Image.open(sio)
+                        cols[i].append(img)
                     except:
+                        import traceback
+                        traceback.print_exc()
                         cols[i].append(None)
                 else:
                     cols[i].append(None)
@@ -150,16 +162,3 @@ class visualizemorganfpbits(knext.PythonNode):
             df[f"bit{idx}"] = cols[i]
 
         return knext.Table.from_pandas(df)
-
-    def get_mols(self, input_1, df):
-        # Prepare mols: If input column consists of rdkit molecules, use them;
-        # if input column consists of SMILES, convert to rdkit molecules
-        molecule_column_type = input_1.schema[self.molecule_column_param].ktype
-        mols = []
-        if molecule_column_type == knext.logical(Chem.rdchem.Mol):
-            LOGGER.warning("rdkit mols detected")
-            mols = df[self.molecule_column_param]
-        else:
-            for smi in df[self.molecule_column_param]:
-                mols.append(Chem.MolFromSmiles(smi, sanitize=False))
-        return mols

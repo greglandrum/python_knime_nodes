@@ -58,6 +58,11 @@ import pyarrow as pa
 from new_rdkit_nodes import utils
 #import knime_arrow_pandas  # TODO Refactor once ticket AP-19209 is implemented
 
+
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
 from rdkit.Chem.MolStandardize import rdMolStandardize
 
 # The standardization code is very verbose, so disable the info log
@@ -117,6 +122,7 @@ class GetParentMoleculeNode(knext.PythonNode):
     )
 
     def configure(self, configure_context, input_schema_1: knext.Schema):
+        LOGGER.warning(f'types: {knext.supported_value_types()}')
         return input_schema_1.append(
             knext.Column(ktype=Chem.Mol, name="Parent Molecule"))
 

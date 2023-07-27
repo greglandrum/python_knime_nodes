@@ -78,24 +78,6 @@ class GetNormalizedMoleculeNode(knext.PythonNode):
     This node returns the normalized structure of an input molecule.
     """
 
-    # action_description = """Standardization action to generate the parent structure:\n
-    # Largest fragment: Returns the largest fragment after doing a cleanup\n
-    # Remove charge: Returns the uncharged version of the largest fragment\n
-    # Canonical tautomer: Returns the tautomer parent of a given molecule. The fragment parent is the standardized canonical tautomer of the molecule\n
-    # Remove isotopes: Removes all isotopes specifications from the given molecule\n
-    # Remove stereo: Removes the stereo specifications from the given molecule\n
-    # Super parent: Returns the super parent. The super parent is the fragment, charge, isotope, stereo, and tautomer parent of the molecule."""
-    # standardization_actions = {
-    #     "Largest fragment": rdMolStandardize.FragmentParent,
-    #     "Remove charge": rdMolStandardize.ChargeParent,
-    #     "Canonical tautomer": rdMolStandardize.TautomerParent,
-    #     "Remove isotope": rdMolStandardize.IsotopeParent,
-    #     "Remove stereo": rdMolStandardize.StereoParent,
-    #     "Super parent": rdMolStandardize.SuperParent
-    # }
-
-    # stand_action_list = list(standardization_actions.keys())
-
     molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
         description=
@@ -105,13 +87,6 @@ class GetNormalizedMoleculeNode(knext.PythonNode):
         include_row_key=False,
         include_none_column=False,
     )
-
-    # stand_action_param = knext.StringParameter(
-    #     label="Standardization action",
-    #     description=action_description,
-    #     default_value="Super parent",
-    #     enum=stand_action_list,
-    # )
 
     def configure(self, configure_context, input_schema_1: knext.Schema):
         return input_schema_1.append(
