@@ -55,7 +55,7 @@ from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import Draw
 from new_rdkit_nodes import utils
-
+from new_rdkit_nodes.visualize_fp_bits import visualizefpbits
 from PIL import Image
 from io import BytesIO
 
@@ -75,90 +75,7 @@ IPythonConsole.UninstallIPythonRenderer()
     name="Highlighted bits",
     description="Output tables including images of the highlighted bits",
 )
-class visualizemorganfpbits(knext.PythonNode):
-    """
-    This node has a description, and I will change it once I figured out the code...
-    """
-
-    number_bits = knext.IntParameter("Number of bits",
-                                     "Define the number of bits",
-                                     1024,
-                                     min_value=0)
-    radius = knext.IntParameter("FP radius",
-                                "Define the number of the FP radius",
-                                2,
-                                min_value=0)
-
-    molecule_column_param = knext.ColumnParameter(
-        label="Molecule column",
-        description=
-        "Choose the column from the first input table containing the molecules",
-        port_index=0,
-        column_filter=utils.column_is_convertible_to_mol,
-        include_row_key=False,
-        include_none_column=False,
-    )
-    bits_column_param = knext.ColumnParameter(
-        label="Bits column",
-        description=
-        "Choose the column from the second input table containing the bits as integer",
-        port_index=1,
-        column_filter=lambda column: column.ktype in
-        (knext.int64(), knext.int32()),
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    def configure(self, configure_context, input_schema_1: knext.Schema,
-                  input_schema_2):
-        return input_schema_1
-
-    def execute(self, exec_context: knext.ExecutionContext,
-                input_1: knext.Table, input_2: knext.Table):
-        if self.molecule_column_param is None or self.bits_column_param is None:
-            raise AttributeError(
-                "Molecule or Bits column was not selected in configuration dialog."
-            )
-
-        df = input_1.to_pandas()
-
-        molecule_column_type = input_1.schema[self.molecule_column_param].ktype
-        df = input_1.to_pandas()
-        mols = utils.convert_column_to_rdkit_mol(df,
-                                                 molecule_column_type,
-                                                 self.molecule_column_param,
-                                                 sanitizeOnParse=True)
-
-        # create list of FP bits from input table 2
-        fp_ids = input_2.to_pandas()[self.bits_column_param]
-
-        cols = [None] * len(fp_ids)
-        for i in range(len(cols)):
-            cols[i] = []
-
-        for mol in mols:
-            bi = {}  # defining a dictionary
-            fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-                mol, radius=self.radius, nBits=self.number_bits, bitInfo=bi
-            )  # calculate fingerprint with user-defined radius and nr of bits
-            Chem.Kekulize(mol)  # kekulize molecules
-            for i, idx in enumerate(
-                    fp_ids
-            ):  # if rendering fails, append an empty cell. Don't make if-else to catch the error
-                if fp[idx]:
-                    try:
-                        img = Draw.DrawMorganBit(mol, idx, bi, useSVG=False)
-                        sio = BytesIO(img)
-                        img = Image.open(sio)
-                        cols[i].append(img)
-                    except:
-                        import traceback
-                        traceback.print_exc()
-                        cols[i].append(None)
-                else:
-                    cols[i].append(None)
-
-        for i, idx in enumerate(fp_ids):
-            df[f"bit{idx}"] = cols[i]
-
-        return knext.Table.from_pandas(df)
+class visualizemorganfpbits(visualizefpbits):
+    def draw_molecule_with_bit(self,mol,idx,bi):
+        img = Draw.DrawMorganBit(mol, idx, bi, useSVG=True)
+        return img
