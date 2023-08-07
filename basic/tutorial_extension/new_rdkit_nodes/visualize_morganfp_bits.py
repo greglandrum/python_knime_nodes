@@ -43,9 +43,8 @@
 # ------------------------------------------------------------------------
 """
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
-
+@author Greg Landrum, ETH Zurich, Zurich, Switzerland
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
-@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
 
 import logging
@@ -76,6 +75,12 @@ IPythonConsole.UninstallIPythonRenderer()
     description="Output tables including images of the highlighted bits",
 )
 class visualizemorganfpbits(visualizefpbits):
-    def draw_molecule_with_bit(self,mol,idx,bi):
+    """
+    This node will take a first input table with molecules and a second input table with bits and hightlight them in the output table, which is still a shitty description. 
+    """
+    def get_fp(self, mol, radius, nBits, bitInfo):
+        rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius, nBits, bitInfo)  
+
+    def draw_molecule_with_bit(self, mol, idx, bi):
         img = Draw.DrawMorganBit(mol, idx, bi, useSVG=True)
         return img

@@ -43,9 +43,8 @@
 # ------------------------------------------------------------------------
 """
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
-
+@author Greg Landrum, ETH Zurich, Zurich, Switzerland
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
-@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
 
 import logging
@@ -77,9 +76,8 @@ IPythonConsole.UninstallIPythonRenderer()
 # )
 class visualizefpbits(knext.PythonNode):
     """
-    This node has a description, and I will change it once I figured out the code...
+    ---
     """
-
     number_bits = knext.IntParameter("Number of bits",
                                      "Define the number of bits",
                                      1024,
@@ -114,7 +112,7 @@ class visualizefpbits(knext.PythonNode):
         return input_schema_1
 
     def draw_molecule_with_bit(self, mol, idx, bi):
-        raise NotImplementedError("needs to be defined in derived class")
+        raise NotImplementedError("Needs to be defined in derived class")
 
     def execute(self, exec_context: knext.ExecutionContext,
                 input_1: knext.Table, input_2: knext.Table):
@@ -140,8 +138,8 @@ class visualizefpbits(knext.PythonNode):
             cols[i] = []
 
         for mol in mols:
-            bi = {}  # defining a dictionary
-            fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
+            bi = {}  
+            fp = self.get_fp(
                 mol, radius=self.radius, nBits=self.number_bits, bitInfo=bi
             )  # calculate fingerprint with user-defined radius and nr of bits
             Chem.Kekulize(mol)  # kekulize molecules
@@ -150,10 +148,9 @@ class visualizefpbits(knext.PythonNode):
             ):  # if rendering fails, append an empty cell. Don't make if-else to catch the error
                 if fp[idx]:
                     try:
-                        # img = Draw.DrawMorganBit(mol, idx, bi, useSVG=True)
                         img = self.draw_molecule_with_bit(mol, idx, bi)
-                        # sio = BytesIO(img)
-                        # img = Image.open(sio)
+                        sio = BytesIO(img)
+                        img = Image.open(sio)
                         cols[i].append(img)
                     except:
                         import traceback
