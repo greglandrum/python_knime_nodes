@@ -43,9 +43,8 @@
 # ------------------------------------------------------------------------
 """
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
-
+@author Greg Landrum, ETH Zurich, Zurich, Switzerland
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
-@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
 
 import logging

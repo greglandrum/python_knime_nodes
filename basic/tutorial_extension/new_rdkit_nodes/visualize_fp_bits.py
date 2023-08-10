@@ -43,9 +43,8 @@
 # ------------------------------------------------------------------------
 """
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
-
+@author Greg Landrum, ETH Zurich, Zurich, Switzerland
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
-@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
 
 import logging
@@ -65,9 +64,8 @@ IPythonConsole.UninstallIPythonRenderer()
 
 class visualizefpbits(knext.PythonNode):
     """
-    This node has a description, and I will change it once I figured out the code...
+    ---
     """
-
     number_bits = knext.IntParameter("Number of bits",
                                      "Define the number of bits",
                                      1024,
@@ -97,7 +95,7 @@ class visualizefpbits(knext.PythonNode):
         return input_schema_1
 
     def draw_molecule_with_bit(self, mol, idx, bi):
-        raise NotImplementedError("needs to be defined in derived class")
+        raise NotImplementedError("Needs to be defined in derived class")
 
     def init_generator(self):
         raise NotImplementedError("needs to be defined in derived class")
