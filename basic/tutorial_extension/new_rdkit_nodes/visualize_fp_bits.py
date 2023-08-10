@@ -63,18 +63,6 @@ LOGGER = logging.getLogger(__name__)
 IPythonConsole.UninstallIPythonRenderer()
 
 
-# @knext.node(name="Visualize Morgan fingerprint bits",
-#             node_type=knext.NodeType.MANIPULATOR,
-#             icon_path="icon.png",
-#             category=utils.category)
-# @knext.input_table(name="Input table 1",
-#                    description="Input table 1 with molecules")
-# @knext.input_table(name="Input table 2",
-#                    description="Input table 2 with Morgan fingerprint bits")
-# @knext.output_table(
-#     name="Highlighted bits",
-#     description="Output tables including images of the highlighted bits",
-# )
 class visualizefpbits(knext.PythonNode):
     """
     This node has a description, and I will change it once I figured out the code...
@@ -84,11 +72,6 @@ class visualizefpbits(knext.PythonNode):
                                      "Define the number of bits",
                                      1024,
                                      min_value=0)
-    radius = knext.IntParameter("FP radius",
-                                "Define the number of the FP radius",
-                                2,
-                                min_value=0)
-
     molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
         description=
@@ -116,12 +99,17 @@ class visualizefpbits(knext.PythonNode):
     def draw_molecule_with_bit(self, mol, idx, bi):
         raise NotImplementedError("needs to be defined in derived class")
 
+    def init_generator(self):
+        raise NotImplementedError("needs to be defined in derived class")
+
     def execute(self, exec_context: knext.ExecutionContext,
                 input_1: knext.Table, input_2: knext.Table):
         if self.molecule_column_param is None or self.bits_column_param is None:
             raise AttributeError(
                 "Molecule or Bits column was not selected in configuration dialog."
             )
+
+        fpgen, ao = self.init_generator()
 
         df = input_1.to_pandas()
 
@@ -140,10 +128,7 @@ class visualizefpbits(knext.PythonNode):
             cols[i] = []
 
         for mol in mols:
-            bi = {}  # defining a dictionary
-            fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-                mol, radius=self.radius, nBits=self.number_bits, bitInfo=bi
-            )  # calculate fingerprint with user-defined radius and nr of bits
+            fp = fpgen.GetFingerprint(mol, additionalOutput=ao)
             Chem.Kekulize(mol)  # kekulize molecules
             for i, idx in enumerate(
                     fp_ids
@@ -151,7 +136,7 @@ class visualizefpbits(knext.PythonNode):
                 if fp[idx]:
                     try:
                         # img = Draw.DrawMorganBit(mol, idx, bi, useSVG=True)
-                        img = self.draw_molecule_with_bit(mol, idx, bi)
+                        img = self.draw_molecule_with_bit(mol, idx, ao)
                         # sio = BytesIO(img)
                         # img = Image.open(sio)
                         cols[i].append(img)

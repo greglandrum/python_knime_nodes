@@ -52,6 +52,7 @@ import logging
 import knime_extension as knext
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import Draw
 from new_rdkit_nodes import utils
@@ -76,6 +77,19 @@ IPythonConsole.UninstallIPythonRenderer()
     description="Output tables including images of the highlighted bits",
 )
 class visualizemorganfpbits(visualizefpbits):
-    def draw_molecule_with_bit(self,mol,idx,bi):
+    radius = knext.IntParameter("FP radius",
+                                "Define the number of the FP radius",
+                                2,
+                                min_value=0)
+
+    def init_generator(self):
+        self._generator = rdFingerprintGenerator.GetMorganGenerator(
+            radius=self.radius, fpSize=self.number_bits)
+        ao = rdFingerprintGenerator.AdditionalOutput()
+        ao.AllocateBitInfoMap()
+        return self._generator, ao
+
+    def draw_molecule_with_bit(self, mol, idx, additionalOutput):
+        bi = additionalOutput.GetBitInfoMap()
         img = Draw.DrawMorganBit(mol, idx, bi, useSVG=True)
         return img

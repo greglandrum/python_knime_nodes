@@ -41,127 +41,55 @@
 #  may freely choose the license terms applicable to such Node, including
 #  when such Node is propagated with or for interoperation with KNIME.
 # ------------------------------------------------------------------------
-
 """
-Part of the RDKit Python extension. Node 'Visualize RDKit fingerprint bits'.
+Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
 
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
 @author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
 
 import logging
-from turtle import clear
 import knime_extension as knext
 from rdkit import Chem
-from new_rdkit_nodes.utils import category
-# from rdkit.Chem import rdMolDescriptors
+from rdkit.Chem import rdMolDescriptors
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import Draw
+from new_rdkit_nodes import utils
+from new_rdkit_nodes.visualize_fp_bits import visualizefpbits
+from PIL import Image
+from io import BytesIO
 
-# from rdkit.Chem import PandasTools
 LOGGER = logging.getLogger(__name__)
 IPythonConsole.UninstallIPythonRenderer()
 
 
-@knext.node(
-    name="Visualize bits of RDKit fingerprints",
-    node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icon.png",
-    category=category)
-@knext.input_table(name="Input table 1", description="Input table 1 with molecules")
-@knext.input_table(name="Input table 2", description="Input table 2 with RDKit fingerprint bits")
+@knext.node(name="Visualize RDKit fingerprint bits",
+            node_type=knext.NodeType.MANIPULATOR,
+            icon_path="icon.png",
+            category=utils.category)
+@knext.input_table(name="Input table 1",
+                   description="Input table 1 with molecules")
+@knext.input_table(name="Input table 2",
+                   description="Input table 2 with RDKit fingerprint bits")
 @knext.output_table(
     name="Highlighted bits",
     description="Output tables including images of the highlighted bits",
 )
-class visualizerdkitfpbits:
-    """
-    This node has a description, and I will change it once I figured out the code...
-    """
+class visualizerdkitfpbits(visualizefpbits):
+    max_path = knext.IntParameter("maximum path length",
+                                  "Define the path length",
+                                  5,
+                                  min_value=1)
 
-    fp_size = knext.IntParameter(
-        "size of fingerprint",
-        "Define the fingerprint size aka number of bits",
-        2048,
-        min_value=0,
-    )
-    # min_path = knext.IntParameter("minimum path length", "Define the path length", 2, min_value=0)
-    max_path = knext.IntParameter(
-        "maximum path length", "Define the path length", 2, min_value=0
-    )
+    def init_generator(self):
+        self._generator = rdFingerprintGenerator.GetRDKitFPGenerator(
+            maxPath=self.max_path, fpSize=self.number_bits)
+        ao = rdFingerprintGenerator.AdditionalOutput()
+        ao.AllocateBitPaths()
+        return self._generator, ao
 
-    # def is_molecule(column):  # Filter columns visible in the column_param for chemistry type; column_filter=is_molecule
-    #     return (
-    #         column.ktype == knext.smiles()
-    #         or column.ktype == knext.smarts()
-    #         or column.ktype == knext.sdf()
-    #     )
-
-    molecule_column = knext.ColumnParameter(
-        label="Molecule column",
-        description="Choose the column from the first input table containing the molecules",
-        port_index=0,
-    )
-    bits_column = knext.ColumnParameter(
-        label="Bits column",
-        description="Choose the column from the second input table containing the bits as integer",
-        port_index=1,
-    )
-
-    a = 0  # the number of columns we want to add
-
-    def configure(
-        self, configure_context, input_schema_1: knext.Schema, input_schema_2
-    ):  # STEFFEN NERVEN wie man a setzt!!!
-        for i in range(self.a):
-            input_schema_1 = input_schema_1.append(knext.Column(knext.string()), "test")
-            # input_schema_1 = input_schema_1.append(knext.Column(knext.string(), f"column{self.a}"))
-        return input_schema_1
-
-    def execute(self, exec_context, input_1, input_2):
-        a = len(self.bits_column)
-
-        input_1_pandas = input_1.to_pandas()
-        input_2_pandas = input_2.to_pandas()
-
-        # define the molecules from input table 1
-        # mols = [Chem.MolFromSmiles(smi) for smi in input_1_pandas[self.molecule_column]]
-
-        mols = []
-        for smi in input_1_pandas[self.molecule_column]:
-            mols.append(Chem.MolFromSmiles(smi))
-
-        # LOGGER.warning(mols)
-        # LOGGER.warning(type(mols))
-
-        # create list of FP bits from input table 2
-        fp_ids = input_2_pandas[self.bits_column]
-
-        cols = [None] * len(fp_ids)
-        for i in range(len(cols)):
-            cols[i] = []
-
-        # defining the output table
-        output_table_1 = input_1_pandas.copy()
-
-        for mol in mols:
-            rdkbi = {}  # defining a dictionary
-            fp = Chem.RDKFingerprint(
-                mol, maxPath=self.max_path, fpSize=self.fp_size, bitInfo=rdkbi
-            )  # calculate fingerprint with user-defined path length and nr of bits aka fp size
-            Chem.Kekulize(mol)  # kekulize molecules
-            for i, idx in enumerate(
-                fp_ids
-            ):  # if rendering fails, append an empty cell. Don't make if-else to catch the error
-                if fp[idx]:
-                    try:
-                        cols[i].append(Draw.DrawRDKitBit(mol, idx, rdkbi))
-                    except:
-                        cols[i].append(None)
-                else:
-                    cols[i].append(None)
-
-        for i, idx in enumerate(fp_ids):
-            output_table_1[f"bit{idx}"] = cols[i]
-
-        return knext.Table.from_pandas(output_table_1)
+    def draw_molecule_with_bit(self, mol, idx, additionalOutput):
+        bi = additionalOutput.GetBitPaths()
+        img = Draw.DrawRDKitBit(mol, idx, bi, useSVG=True)
+        return img
