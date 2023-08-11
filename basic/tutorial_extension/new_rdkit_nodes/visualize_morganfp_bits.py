@@ -45,6 +45,7 @@
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
 @author Greg Landrum, ETH Zurich, Zurich, Switzerland
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
+@author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
 
 import logging
@@ -77,7 +78,7 @@ IPythonConsole.UninstallIPythonRenderer()
 )
 class visualizemorganfpbits(visualizefpbits):
     radius = knext.IntParameter("FP radius",
-                                "Define the number of the FP radius",
+                                "Define the number of the fingerprint radius",
                                 2,
                                 min_value=0)
 

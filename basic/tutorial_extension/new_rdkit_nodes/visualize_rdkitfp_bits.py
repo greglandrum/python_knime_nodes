@@ -43,7 +43,7 @@
 # ------------------------------------------------------------------------
 """
 Part of the RDKit Python extension. Node 'Visualize Morgan fingerprint bits'.
-
+@author Greg Landrum, ETH Zurich, Zurich, Switzerland
 @author Alice Krebs, KNIME GmbH, Konstanz, Germany
 @author Steffen Fissler, KNIME GmbH, Konstanz, Germany
 """
@@ -77,14 +77,18 @@ IPythonConsole.UninstallIPythonRenderer()
     description="Output tables including images of the highlighted bits",
 )
 class visualizerdkitfpbits(visualizefpbits):
-    max_path = knext.IntParameter("maximum path length",
-                                  "Define the path length",
-                                  5,
+    min_path = knext.IntParameter("Minimum path length",
+                                  "Define the minimum path length. Default is 1.",
+                                  1,
                                   min_value=1)
+    max_path = knext.IntParameter("Maximum path length",
+                                  "Define the maximum path length.Default is 7.",
+                                  7,
+                                  min_value=2) # Does it make sense that it should be larger than the minimum?
 
     def init_generator(self):
         self._generator = rdFingerprintGenerator.GetRDKitFPGenerator(
-            maxPath=self.max_path, fpSize=self.number_bits)
+            minPath=self.min_path, maxPath=self.max_path, fpSize=self.number_bits)
         ao = rdFingerprintGenerator.AdditionalOutput()
         ao.AllocateBitPaths()
         return self._generator, ao
