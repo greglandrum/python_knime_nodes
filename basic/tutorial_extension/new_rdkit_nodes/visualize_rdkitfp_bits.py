@@ -63,7 +63,6 @@ from io import BytesIO
 LOGGER = logging.getLogger(__name__)
 IPythonConsole.UninstallIPythonRenderer()
 
-
 @knext.node(name="Visualize RDKit fingerprint bits",
             node_type=knext.NodeType.MANIPULATOR,
             icon_path="icon.png",
@@ -71,7 +70,7 @@ IPythonConsole.UninstallIPythonRenderer()
 @knext.input_table(name="Input table 1",
                    description="Input table 1 with molecules")
 @knext.input_table(name="Input table 2",
-                   description="Input table 2 with RDKit fingerprint bits")
+                   description="Input table 2 with fingerprint bits to highlight")
 @knext.output_table(
     name="Highlighted bits",
     description="Output tables including images of the highlighted bits",
