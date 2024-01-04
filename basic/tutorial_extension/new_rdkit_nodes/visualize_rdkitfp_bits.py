@@ -65,7 +65,7 @@ IPythonConsole.UninstallIPythonRenderer()
 
 @knext.node(name="Visualize RDKit fingerprint bits",
             node_type=knext.NodeType.MANIPULATOR,
-            icon_path="icon.png",
+            icon_path="icons/VisualizeFPBits.png",
             category=utils.category)
 @knext.input_table(name="Input table 1",
                    description="Input table 1 with molecules")

@@ -66,7 +66,7 @@ LOGGER = logging.getLogger(__name__)
 @knext.node(
     name="RDKit Descriptor Calculator",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icon.png",
+    icon_path="icons/RDKitDescriptors.png",
     category=utils.category
     )
 @knext.input_table(

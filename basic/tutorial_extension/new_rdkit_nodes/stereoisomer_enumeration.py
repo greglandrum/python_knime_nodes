@@ -62,7 +62,7 @@ LOGGER = logging.getLogger(__name__)
 @knext.node(
     name="Stereoisomer Enumeration",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icon.png",
+    icon_path="icons/StereoisomerEnumeration.png",
     category=utils.category
     )
 @knext.input_table(

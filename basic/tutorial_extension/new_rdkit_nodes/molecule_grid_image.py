@@ -61,7 +61,7 @@ IPythonConsole.UninstallIPythonRenderer()
 @knext.node(
     name="Molecules to Image Grid",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path="icon.png",
+    icon_path="icons/MolsToGridImage.png",
     category=utils.category
     )
 @knext.input_table(
