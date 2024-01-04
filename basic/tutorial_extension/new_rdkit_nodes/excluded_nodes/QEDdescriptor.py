@@ -42,7 +42,7 @@
 #  when such Node is propagated with or for interoperation with KNIME.
 # ------------------------------------------------------------------------
 """
-Part of the RDKit Python extension. Node 'Mols to Grid Image'.
+Part of the RDKit Python extension. Node 'Normalize Molecule'.
 @author Greg Landrum, ETH Zurich, Switzerland
 @author Alice Krebs, KNIME AG, Konstanz, Germany
 """
@@ -50,76 +50,40 @@ Part of the RDKit Python extension. Node 'Mols to Grid Image'.
 import logging
 import knime_extension as knext
 from rdkit import Chem
-from rdkit.Chem.Draw import IPythonConsole
-from rdkit.Chem import Draw
+from rdkit.Chem import QED
 from new_rdkit_nodes import utils
-from PIL import Image
-from io import BytesIO
 LOGGER = logging.getLogger(__name__)
-IPythonConsole.UninstallIPythonRenderer()
+# IPythonConsole.UninstallIPythonRenderer()
 
 @knext.node(
-    name="Molecules to Image Grid",
-    node_type=knext.NodeType.VISUALIZER,
+    name="QED Descriptor Calculator",
+    node_type=knext.NodeType.MANIPULATOR,
     icon_path="icon.png",
     category=utils.category
     )
 @knext.input_table(
-    name="Input Data", 
-    description="Input data with molecules."
+    name="Input Table", 
+    description="Input data with molecules"
     )
-@knext.output_image(
-    name="Output Image",
-    description="Image with molecules arranged in the defined grid."
+@knext.output_table(
+    name="Output Table",
+    description="Input table with an additional column with QED values"
     )
-class MolsToGrid:
+class QEDdescriptor:
     """
-    This node outputs a grid of molecule images as PNG or SVG.  
-    
-    This node outputs a grid of molecule images as PNG or SVG. 
+    This node calculates the QED descriptor. 
     """
+
     molecule_column_param = knext.ColumnParameter(
         label="Molecule column",
-        description="Select the molecule column to render the images from. The column has to be SMILES, SDF, or RDKit molecule.",
+        description="Choose the column from the input table containing the molecules",
         port_index=0,
         column_filter=utils.column_is_convertible_to_mol,
         include_row_key=False,
-        include_none_column=False)
-
-    image_label_column = knext.ColumnParameter(label="Column with image label", 
-                                                description="Select a column from the input table that should serve as image label.", 
-                                                port_index=0)
-
-    mols_per_row = knext.IntParameter(label="Molecules per row", 
-                                        description="Set the number of molecule images per row.", 
-                                        default_value=3, 
-                                        min_value=1)
-
-    image_width = knext.IntParameter(label="Image width", 
-                                        description="Define the overall image width in pixels. The default is 200.", 
-                                        default_value=200, 
-                                        min_value=1)
-
-    image_height = knext.IntParameter(label="Image height", 
-                                        description="Define the overall image height in pixels. The default is 200.", 
-                                        default_value=200, 
-                                        min_value=1)
-    output_type = knext.StringParameter(label="Output image type",
-                                        description="Select if the returned output image type should be PNG or SVG",
-                                        default_value="SVG",
-                                        enum = ["SVG", "PNG"]
-                                        )
-    scale = knext.BoolParameter(label="Draw molecules on same scale",
-                                description="Select if the molecules should be drawn on the same scale taking the largest molecule of the input data as reference. Default value is true",
-                                default_value=True
-                                )
+        include_none_column=False)   
 
     def configure(self, config_context, input_schema_1: knext.Schema):
-        if self.output_type == "PNG": 
-            return (knext.ImagePortObjectSpec(knext.ImageFormat.PNG))
-        else: 
-            return (knext.ImagePortObjectSpec(knext.ImageFormat.SVG))
-
+        return (input_schema_1.append(knext.Column(knext.double(), "QED")))
  
     def execute(self, exec_context: knext.ExecutionContext,
                 input_1: knext.Table):
@@ -131,29 +95,19 @@ class MolsToGrid:
         
         molecule_column_type = input_1.schema[self.molecule_column_param].ktype 
         
-        df = input_1.to_pandas()
+        df = input_1.to_pandas() 
     
         mols = utils.convert_column_to_rdkit_mol(df,
                                                 molecule_column_type,
                                                 self.molecule_column_param,
                                                 sanitizeOnParse=True)
-        dOpts = Draw.MolDrawOptions()
-        dOpts.drawMolsSameScale=self.scale
+        QEDvalues = []
+        for mol in mols:             
+            if mol is None: 
+                QEDvalues.append(None)
+            else: 
+                QEDvalues.append(Chem.QED.default(mol))
 
-        if self.output_type == "PNG":
-            SVG_bool = False
-
-        elif self.output_type == "SVG":
-            SVG_bool = True
-        
-        img = Draw.MolsToGridImage(mols, 
-                                   molsPerRow=self.mols_per_row, 
-                                   subImgSize=(self.image_width,self.image_height), 
-                                   legends=[str(x) for x in df[self.image_label_column]], 
-                                   useSVG=SVG_bool,
-                                   returnPNG=True,
-                                   drawOptions=dOpts
-                                   )
-
-        return img
-
+        df['QED'] = QEDvalues
+        return knext.Table.from_pandas(df)
+    

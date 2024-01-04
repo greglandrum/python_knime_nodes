@@ -56,18 +56,10 @@ import pandas as pd
 import knime.types.chemistry as cet  # To work with and compare against chemical data types like SMILES,...
 import pyarrow as pa
 from new_rdkit_nodes import utils
-#import knime_arrow_pandas  # TODO Refactor once ticket AP-19209 is implemented
-
-
 import logging
-
 LOGGER = logging.getLogger(__name__)
-
 from rdkit.Chem.MolStandardize import rdMolStandardize
-
-# The standardization code is very verbose, so disable the info log
-from rdkit import RDLogger
-
+from rdkit import RDLogger # The standardization code is very verbose, so disable the info log
 RDLogger.DisableLog("rdApp.info")
 
 

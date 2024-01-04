@@ -1,4 +1,4 @@
 org.knime.rdkit_python_nodes: # {group_id}.{name} from the knime.yml
-  src: /home/glandrum/Code/python_knime_nodes/basic/tutorial_extension # Path to folder containing the extension files
-  conda_env_path: /home/glandrum/miniconda3/envs/knimepy_rdkit # Path to the Python environment to use
+  src: C:/knime-python/python_knime_nodes/basic/tutorial_extension # Path to folder containing the extension files
+  conda_env_path: C:/Users/alice.krebs/miniconda3/envs/rdkit_node_dev # Path to the Python environment to use
   debug_mode: true # Optional line, if set to true, it will always use the latest changes of execute/configure, when that method is used within the KNIME Analytics Platform

@@ -39,12 +39,12 @@ def convert_column_to_rdkit_mol(df,
         mols = df[molecule_column_param]
     elif molecule_column_type in smilesTypes:
         mols = [
-            Chem.MolFromSmiles(smi, sanitize=sanitizeOnParse)
+            Chem.MolFromSmiles(smi, sanitize=sanitizeOnParse) if smi is not None else None
             for smi in df[molecule_column_param]
         ]
     elif molecule_column_type in ctabTypes:
         mols = [
-            Chem.MolFromMolBlock(mb, sanitize=sanitizeOnParse, removeHs=sanitizeOnParse)
+            Chem.MolFromMolBlock(mb, sanitize=sanitizeOnParse, removeHs=sanitizeOnParse) if mb is not None else None
             for mb in df[molecule_column_param]
         ]
     else:
