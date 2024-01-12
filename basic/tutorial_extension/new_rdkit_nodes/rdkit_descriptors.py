@@ -54,12 +54,12 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import  Descriptors
 from new_rdkit_nodes import utils
-# raise ValueError(os.environ)
-# sys.path.append(os.path.join(os.environ['CONDA_PREFIX'],'Library', 'share','RDKit','Contrib'))
-# import SA_Score
-# from SA_Score import sascorer
-# import NP_Score
-# from NP_Score import npscorer
+exec_path = sys.executable
+sys.path.append(os.path.join(os.path.dirname(exec_path),'Library', 'share','RDKit','Contrib'))
+import SA_Score
+from SA_Score import sascorer
+import NP_Score
+from NP_Score import npscorer
 LOGGER = logging.getLogger(__name__)
 
 
@@ -78,7 +78,9 @@ LOGGER = logging.getLogger(__name__)
     description="Input table with an additional column for each descriptor"
     )
 class ExtensiveDescriptorCalculator:
-    """ This new descriptor calculator node calculates almost all descriptors available in the RDKit Python package (in comparison to the existing node that only implemented a selection of them. 
+    """ This new descriptor calculator node calculates almost all descriptors available in the RDKit Python package.
+    
+    This new descriptor calculator node calculates almost all descriptors available in the RDKit Python package (in comparison to the existing node that only implemented a selection of them). 
     It also includes the SA and NP score, as well as the TPSA including polar sulfur and phosphate. It does not calculare the Ipc descriptor. 
     """
 
@@ -102,11 +104,7 @@ class ExtensiveDescriptorCalculator:
  
     def execute(self, exec_context: knext.ExecutionContext,
                 input_1: knext.Table):
-        LOGGER.warning(os.environ)
-        for i in os.environ:
-            LOGGER.warning(i)
-        sys.path.append(os.path.join(os.environ['CONDA_PREFIX'],'Library', 'share','RDKit','Contrib'))
-        return None
+
         if self.molecule_column_param is None:
             raise AttributeError(
             "Molecule column was not selected in configuration dialog."
@@ -120,8 +118,12 @@ class ExtensiveDescriptorCalculator:
                                                 molecule_column_type,
                                                 self.molecule_column_param,
                                                 sanitizeOnParse=True)
-        # calculate RDKit descriptors excluding Ipc
+        
+        # calculate the descriptors
         descriptors = {key:[] for key in getDescriptorDataTypes().keys()}
+
+        progress = 0.0
+        add_to_progress = 1 / input_1.num_rows
 
         for mol in mols:             
             if mol is None: 
@@ -131,11 +133,13 @@ class ExtensiveDescriptorCalculator:
                 descrs = getMolDescriptors(mol)
                 for k,v in descrs.items():
                     descriptors[k].append(v)
+            progress += add_to_progress
+            exec_context.set_progress(progress=progress)
         
         for nm,col in descriptors.items():
             df[nm] = col
 
-        # calculate the NP score
+        # # calculate the NP score
         # fscore = npscorer.readNPModel()
         # NP = []
         # for mol in mols:
@@ -145,7 +149,7 @@ class ExtensiveDescriptorCalculator:
         #         NP.append(npscorer.scoreMol(mol,fscore))
         # df['NP_Score'] = NP
 
-        # calculate the SA score
+        # # calculate the SA score
         # SA = []
         # for mol in mols:
         #     if mol is None: 
@@ -154,48 +158,64 @@ class ExtensiveDescriptorCalculator:
         #         SA.append(sascorer.calculateScore(mol))
         # df['SA_Score'] = SA
 
-        # calculate TPSA including polar S and P
-        TPSA_SP = []
-        for mol in mols:
-            if mol is None: 
-                TPSA_SP.append(None)
-            else: 
-                TPSA_SP.append(Descriptors.TPSA(mol), includeSandP=True)
-        df['TPSA_includeSandP'] = TPSA_SP 
+        # # calculate TPSA including polar S and P
+        # TPSA_SP = []
+        # for mol in mols:
+        #     if mol is None: 
+        #         TPSA_SP.append(None)
+        #     else: 
+        #         TPSA_SP.append(Descriptors.TPSA(mol, includeSandP=True))
+        # df['TPSA_includeSandP'] = TPSA_SP 
 
         return knext.Table.from_pandas(df)
 
 def getMolDescriptors(mol, missingVal=None):
     res = {}
+    fscore = npscorer.readNPModel()
     for nm,fn in Descriptors._descList:
         if nm == "Ipc":
             continue
         try:
             val = fn(mol)
-        except:
+        except ValueError:
             import traceback
             traceback.print_exc()
             val = missingVal
         res[nm] = val
-    # calculate SA, NP AND TPSA here
+        res['TPSA_includeSandP'] = Descriptors.TPSA(mol, includeSandP=True)
+        res['SA_score'] = sascorer.calculateScore(mol)
+        res['NP_Score'] = npscorer.scoreMol(mol,fscore)
     return res
+
+# def getDescriptorDataTypes(missingVal=None):
+#     res = {}
+#     mol = Chem.MolFromSmiles('CCO')
+#     for nm,fn in Descriptors._descList:
+#         if nm == "Ipc":
+#             continue
+#         try:
+#             tp = type(fn(mol))
+#         except:
+#             import traceback
+#             traceback.print_exc()
+#             tp = missingVal
+#         res[nm] = tp
+#     return res
 
 def getDescriptorDataTypes(missingVal=None):
     res = {}
     mol = Chem.MolFromSmiles('CCO')
-    for nm,fn in Descriptors._descList:
-        if nm == "Ipc":
-            continue
+    desc = getMolDescriptors(mol)
+    for k, v in desc.items():
         try:
-            tp = type(fn(mol))
+            tp = type(v)
         except:
             import traceback
             traceback.print_exc()
             tp = missingVal
-        res[nm] = tp
+            res[k] = tp
     return res
 
 #################
 # TODO: 
 # progress bar -> how to implement best? 
-# import SA and NP Score crashes node (not shown in node repo) -> KeyError: 'CONDA_PREFIX', where is conda install, ask python kids

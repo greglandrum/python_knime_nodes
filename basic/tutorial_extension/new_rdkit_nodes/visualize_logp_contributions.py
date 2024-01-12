@@ -66,10 +66,10 @@ LOGGER = logging.getLogger(__name__)
 @knext.input_table(name="Input Data", description="Table containing a SMILES column")
 @knext.output_table(name="Output Data", description="Input including LogP contributions")
 class LogPContribNode:
-    """Visualizes atomic LogP contributions.
+    """
+    Visualizes atomic LogP contributions.
 
-    This node adds a column to the output table containing visualized 
-    contributions to LogP with the RDKit molecules.
+    This node adds a column to the output table containing visualized contributions to LogP with the RDKit molecules.
     """
 
     def column_is_smiles_or_mol(column: knext.Column):
